@@ -1,0 +1,12 @@
+[project]
+name = "number-expression-solver"
+version = "0.1.0"
+description = "A python solver that finds all possible mathematical expressions given a set of numbers to reach a target value."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+authors = [
+    { name = "Alexandre Sauquet", email = "sauquetalex@gmail.com"},
+    { name = "Kian Kasad", email = "kian@kasad.com"}
+]
+license = {text = "NON-AI-MIT"}
