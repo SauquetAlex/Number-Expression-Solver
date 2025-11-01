@@ -18,6 +18,7 @@ You can run the solver directly by cloning or downloading the script.
 - Uses Reverse Polish Notation (RPN) internally for efficient computation and generating expression trees.
 - Outputs results in readable infix notation.
 - Configurable tolerance for target matching.
+- Configurable number of workers for multiprocessing.
 
 ## Usage
 
@@ -59,7 +60,7 @@ You can modify the precision of the solver by editting the `tol` parameter. Tole
 
 ## How it works
 
-The solver uses three key techniques:
+The solver uses four key techniques:
 
 1. **RPN Structure Generation**: Generates all valid RPN structures (binary trees) with a recursive algorithm.
 2. **Exhaustive Search**: Tries all combinations of:
@@ -67,6 +68,7 @@ The solver uses three key techniques:
   - Operator combinations
   - Expression structures
 3. **Stack-Based Evaluation**: Evaluates the RPN expressions and converts them to readable infix notation.
+4. **Multiprocessing**: The solver uses a different worker for each combinations of operators.
 
 The number of attempts grows factorially with the number of inputs, so the solver is intended for 4-6 input numbers.
 

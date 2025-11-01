@@ -1,8 +1,10 @@
 from collections.abc import Callable
 from itertools import product, permutations
+from multiprocessing import Pool, cpu_count
+from functools import partial
 
 # Comment out the operators you don't wish to use
-OPERATORS: dict[str, Callable[[float, float], float]] = {
+OPERATORS: dict[str, Callable[[float, float], float | None]] = {
     "+": lambda x, y: x + y,
     "-": lambda x, y: x - y,
     "*": lambda x, y: x * y,
@@ -18,16 +20,24 @@ OPERATORS: dict[str, Callable[[float, float], float]] = {
 }
 
 
-def solve(target: float, numbers: list[float], tol: float = 1e-9) -> list[str]:
+def solve(
+    target: float,
+    numbers: list[float],
+    tol: float = 1e-9,
+    max_workers: int | None = None,
+) -> list[str]:
     """Finds all expressions that evaluate to the target with the given numbers.
 
     Tries all viable permutations of numbers, combinations of operators, and all
-    valid RPN structures to find expressions that equal the target within tolerance.
+    valid RPN structures to find expressions that equal the target within
+    tolerance.
 
     Args:
         target: The target value to reach.
         numbers: List of numbers to use in expressions.
         tol: Tolerance for floating point comparison. Default is 1e-9
+        max_workers: Number of workers for multiprocessing. Default will use as
+        many as there are cpus.
 
     Returns:
         List of infix expressions that evaluate to the target.
@@ -36,16 +46,56 @@ def solve(target: float, numbers: list[float], tol: float = 1e-9) -> list[str]:
     attempts = 0
     n = len(numbers)
     structures = generateRPNStructures(n)
-    for ops in product(OPERATORS.keys(), repeat=n - 1):
-        for perm in permutations(numbers):
-            for structure in structures:
-                attempts += 1
-                sequence = useStructures(structure, perm, ops)
-                computed = computRPN(sequence)
-                if computed is not None and abs(computed - target) < tol:
-                    result.append(rpnToInfix(sequence))
+    opsCombinations = list(product(OPERATORS.keys(), repeat=n - 1))
+    worker = partial(
+        processOpsCombinations,
+        target=target,
+        numbers=numbers,
+        structures=structures,
+        tol=tol,
+    )
+
+    if max_workers is None:
+        max_workers = cpu_count()
+    with Pool(max_workers) as pool:
+        results = pool.map(worker, opsCombinations)
+    result = [expr for sublist in results for expr in sublist]
+
+    attempts = len(opsCombinations) * len(list(permutations(numbers))) * len(structures)
     print(f"Attempted {attempts} expressions, found {len(result)}")
     return result
+
+
+def processOpsCombinations(
+    operators: tuple[str, ...],
+    target: float,
+    numbers: list[float],
+    structures: list[list[int]],
+    tol: float,
+) -> list[str]:
+    """Processes all expressions for a specific combinations of operators.
+
+    Process called by each worker for each combination of operators. Tests every
+    permutation and structure possilbe and reports the solutions found.
+
+    Args:
+        ops: Given combination of operators.
+        target: The target value to reach.
+        numbers: List of numbers to use in expressions.
+        structures: Precomputed structures of RPN to use.
+        tol: Tolerance for floating point comparison. Default is 1e-9
+
+    Returns:
+        All operations that result in reaching the target.
+    """
+    res = []
+    for perm in permutations(numbers):
+        for structure in structures:
+            sequence = useStructures(structure, perm, operators)
+            computed = computRPN(sequence)
+            if computed is not None and abs(computed - target) < tol:
+                res.append(rpnToInfix(sequence))
+    return res
 
 
 def generateRPNStructures(num: int) -> list[list[int]]:
@@ -85,7 +135,9 @@ def generateRPNStructures(num: int) -> list[list[int]]:
     return generate(num, num - 1, 0, [])
 
 
-def useStructures(structure: list[int], numbers: tuple, operators: tuple) -> list:
+def useStructures(
+    structure: list[int], numbers: tuple[float, ...], operators: tuple[str, ...]
+) -> list:
     """Applies numbers and operators to the RPN structure.
 
     Args:
@@ -109,7 +161,7 @@ def useStructures(structure: list[int], numbers: tuple, operators: tuple) -> lis
     return res
 
 
-def computRPN(input: list[float | str]) -> float:
+def computRPN(input: list[float | str]) -> float | None:
     """Evaluates an RPN expression.
 
     Args:
@@ -133,7 +185,7 @@ def computRPN(input: list[float | str]) -> float:
     return stack.pop()
 
 
-def rpnToInfix(input: list[float | str]) -> str:
+def rpnToInfix(input: list[float | str]) -> str | None:
     """Converts an RPN expression to infix notation.
 
     Args:
