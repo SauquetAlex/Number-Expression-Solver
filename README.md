@@ -14,9 +14,9 @@ You can run the solver directly by cloning or downloading the script.
 
 - Exhaustive search through all valid expression trees.
 - Support for basic operators: addition, subtraction, multiplication, division.
-- Extensible operator system (commented code shows how to add exponentiation, logarithms, and modulo).
+- Extensible operator system (commented code shows how to add exponentiation, logarithms, and modulo) with precedence and associativity.
 - Uses Reverse Polish Notation (RPN) internally for efficient computation and generating expression trees.
-- Outputs results in readable infix notation.
+- Outputs results in readable infix notation with minimal parenthesizing.
 - Configurable tolerance for target matching.
 - Configurable number of workers for multiprocessing.
 
@@ -37,26 +37,54 @@ python3 main.py
 ```
 ### Customizing Operators and Tolerance
 
-Edit the `OPERATORS` dictionary to enable/disable operators:
+Edit the `OPERATORS` dictionary in `operators.py` to enable/disable operators:
 ```python
-OPERATORS: dict[str, Callable[[float, float], float]] = {
-    "+": lambda x, y: x + y,
-    "-": lambda x, y: x - y,
-    "*": lambda x, y: x * y,
-    "/": lambda x, y: x / y if y != 0 else None,
-    # "^": lambda x, y: None
-    # if abs(y) > 1e2
-    # or abs(x) > 1e3
-    # or (x == 0 and y < 0)
-    # or isinstance((temp := x**y), complex)
-    # else temp,
-    # "log": lambda x, y: None if x <= 0 or y <= 1 else math.log(x, y),
-    # "%": lambda x, y: x % y if y != 0 else None,
+OPERATORS: dict[str, Operator] = {
+    "+": Operator(
+        func=lambda x, y: x + y,
+        precedence=1,
+        associative=True,
+    ),
+    "-": Operator(
+        func=lambda x, y: x - y,
+        precedence=1,
+        associative=False,
+    ),
+    "*": Operator(
+        func=lambda x, y: x * y,
+        precedence=2,
+        associative=True,
+    ),
+    "/": Operator(
+        func=lambda x, y: x / y if y != 0 else None,
+        precedence=2,
+        associative=False,
+    ),
+    # "**": Operator(
+    #     func=lambda x, y: None
+    #     if abs(y) > 1e2
+    #     or abs(x) > 1e3
+    #     or (x == 0 and y < 0)
+    #     or isinstance((temp := x**y), complex)
+    #     else temp,
+    #     precedence=5,
+    #     associative=False,
+    # ),
+    # "logbase": Operator(
+    #     func=lambda x, y: None if x <= 0 or y <= 1 else math.log(x, y),
+    #     precedence=4,
+    #     associative=False,
+    # ),
+    # "%": Operator(
+    #     func=lambda x, y: x % y if y != 0 else None,
+    #     precedence=2,
+    #     associative=False,
+    # ),
 }
 ```
 Note that more complicated operators require additional checks to keep the solver efficient and avoid errors.
 
-You can modify the precision of the solver by editing the `tol` parameter. Tolerance is needed when working with floating-point numbers.
+You can modify the precision of the solver via the `tol` parameter. Tolerance is needed when working with floating-point numbers.
 
 ## How it works
 

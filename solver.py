@@ -1,23 +1,8 @@
-from collections.abc import Callable
 from itertools import product, permutations
 from multiprocessing import Pool, cpu_count
 from functools import partial
 
-# Comment out the operators you don't wish to use
-OPERATORS: dict[str, Callable[[float, float], float | None]] = {
-    "+": lambda x, y: x + y,
-    "-": lambda x, y: x - y,
-    "*": lambda x, y: x * y,
-    "/": lambda x, y: x / y if y != 0 else None,
-    # "^": lambda x, y: None
-    # if abs(y) > 1e2
-    # or abs(x) > 1e3
-    # or (x == 0 and y < 0)
-    # or isinstance((temp := x**y), complex)
-    # else temp,
-    # "log": lambda x, y: None if x <= 0 or y <= 1 else math.log(x, y),
-    # "%": lambda x, y: x % y if y != 0 else None,
-}
+from operators import OPERATORS
 
 
 def solve(
@@ -37,7 +22,7 @@ def solve(
         numbers: List of numbers to use in expressions.
         tol: Tolerance for floating point comparison. Default is 1e-9
         max_workers: Number of workers for multiprocessing. Default will use as
-        many as there are cpus.
+            many as there are cpus.
 
     Returns:
         List of infix expressions that evaluate to the target.
@@ -92,7 +77,7 @@ def processOpsCombinations(
     for perm in permutations(numbers):
         for structure in structures:
             sequence = useStructures(structure, perm, operators)
-            computed = computRPN(sequence)
+            computed = computeRPN(sequence)
             if computed is not None and abs(computed - target) < tol:
                 res.append(rpnToInfix(sequence))
     return res
@@ -161,7 +146,7 @@ def useStructures(
     return res
 
 
-def computRPN(input: list[float | str]) -> float | None:
+def computeRPN(input: list[float | str]) -> float | None:
     """Evaluates an RPN expression.
 
     Args:
@@ -176,7 +161,7 @@ def computRPN(input: list[float | str]) -> float | None:
             op = x
             rhs = stack.pop()
             lhs = stack.pop()
-            res = OPERATORS[op](lhs, rhs)
+            res = OPERATORS[op].func(lhs, rhs)
             if res is None:
                 return None
             stack.append(res)
@@ -194,13 +179,28 @@ def rpnToInfix(input: list[float | str]) -> str | None:
     Returns:
         The expression in infix notation with parenthesization.
     """
-    stack: list[float | str] = []
+    if not input:
+        return None
+
+    stack: list[tuple[str, str | None, int]] = []
+
     for x in input:
         if type(x) is str:
             op = x
-            rhs = stack.pop()
-            lhs = stack.pop()
-            stack.append(f"({lhs} {op} {rhs})")
+            rhsExpr, rhsOp, rhsPrec = stack.pop()
+            lhsExpr, lhsOp, lhsPrec = stack.pop()
+            currPrec = OPERATORS[op].precedence
+            currAssoc = OPERATORS[op].associative
+
+            if lhsOp is not None and lhsPrec < currPrec:
+                lhsExpr = f"({lhsExpr})"
+            if rhsOp is not None and (
+                rhsPrec < currPrec or (rhsPrec == currPrec and not currAssoc)
+            ):
+                rhsExpr = f"({rhsExpr})"
+
+            result = f"{lhsExpr} {op} {rhsExpr}"
+            stack.append((result, op, currPrec))
         else:
-            stack.append(x)
-    return stack.pop()
+            stack.append((str(x), None, float("inf")))
+    return stack[0][0]
