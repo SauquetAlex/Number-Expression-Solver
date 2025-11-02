@@ -194,13 +194,32 @@ def rpnToInfix(input: list[float | str]) -> str | None:
     Returns:
         The expression in infix notation with parenthesization.
     """
-    stack: list[float | str] = []
+
+    precedence = {
+        "+": 1,
+        "-": 1,
+        "*": 2,
+        "/": 2,
+    }
+    nonAssoc = {"-", "/"}
+    stack: list[tuple[str, str | None, int]] = []
     for x in input:
         if type(x) is str:
             op = x
-            rhs = stack.pop()
-            lhs = stack.pop()
-            stack.append(f"({lhs} {op} {rhs})")
+            rhsExpr, rhsOp, rhsPrec = stack.pop()
+            lhsExpr, lhsOp, lhsPrec = stack.pop()
+            currPrec = precedence[op]
+
+            if lhsOp is not None and lhsPrec < currPrec:
+                lhsExpr = f"({lhsExpr})"
+            if rhsOp is not None and (
+                rhsPrec < currPrec or (rhsPrec == currPrec and op in nonAssoc)
+            ):
+                rhsExpr = f"({rhsExpr})"
+
+            result = f"{lhsExpr} {op} {rhsExpr}"
+            stack.append((result, op, currPrec))
+
         else:
-            stack.append(x)
+            stack.append((str(x), None, float('inf')))
     return stack.pop()
