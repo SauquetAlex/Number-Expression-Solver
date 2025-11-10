@@ -1,6 +1,6 @@
-from itertools import product, permutations
-from multiprocessing import Pool, cpu_count
 from functools import partial
+from itertools import permutations, product
+from multiprocessing import Pool, cpu_count
 
 from operators import OPERATORS
 
@@ -157,7 +157,7 @@ def computeRPN(input: list[float | str]) -> float | None:
     """
     stack: list[float] = []
     for x in input:
-        if type(x) is str:
+        if isinstance(x, str):
             op = x
             rhs = stack.pop()
             lhs = stack.pop()
@@ -182,7 +182,7 @@ def rpnToInfix(input: list[float | str]) -> str | None:
     if not input:
         return None
 
-    stack: list[tuple[str, str | None, int]] = []
+    stack: list[tuple[str, str | None, float]] = []
 
     for x in input:
         if type(x) is str:
